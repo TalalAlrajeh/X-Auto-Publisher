@@ -1,0 +1,57 @@
+name: One-time X publishing end-to-end test
+on:
+  push:
+    paths: ['.github/workflows/one-time-test.yml']
+permissions:
+  contents: read
+jobs:
+  end_to_end:
+    if: github.event.head_commit.message == 'test: execute one-time GitHub to Buffer to X publishing'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_CHANNEL_ID: ${{ vars.BUFFER_CHANNEL_ID }}
+      BUFFER_ORGANIZATION_ID: ${{ vars.BUFFER_ORGANIZATION_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Schedule one real post and verify sent status
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const endpoint='https://api.buffer.com';
+          const token=process.env.BUFFER_API_KEY;
+          const channel=process.env.BUFFER_CHANNEL_ID;
+          const org=process.env.BUFFER_ORGANIZATION_ID;
+          if(!token||!channel||!org)throw Error('Missing Buffer configuration');
+          const text='قيمة التداول تمثل إجمالي قيمة الصفقات المنفذة، بينما حجم التداول يمثل عدد الأسهم المتداولة؛ وهما مقياسان مختلفان لقراءة نشاط السوق. للعلم. #تداول';
+          const request=async(query)=>{
+            const response=await fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query}),signal:AbortSignal.timeout(20000)});
+            if(!response.ok)throw Error('Buffer HTTP '+response.status);
+            const result=await response.json();
+            if(result.errors?.length)throw Error('Buffer GraphQL '+result.errors.map(e=>e.message).join('; '));
+            return result.data;
+          };
+          const listing=()=>request('query {posts(first:100,input:{organizationId:'+JSON.stringify(org)+',filter:{channelIds:['+JSON.stringify(channel)+']},sort:[{field:createdAt,direction:desc}]}){edges{node{id text status dueAt createdAt}}pageInfo{hasNextPage}}}');
+          const already=(await listing()).posts.edges.map(e=>e.node).find(p=>p.text===text);
+          if(already){console.log('Duplicate prevented; existing post',already.id,'status',already.status);if(already.status!=='sent')throw Error('Existing test post is not sent');process.exit(0);}
+          const due=new Date(Date.now()+3*60*1000).toISOString();
+          const mutation='mutation {createPost(input:{text:'+JSON.stringify(text)+',channelId:'+JSON.stringify(channel)+',schedulingType:automatic,mode:customScheduled,dueAt:'+JSON.stringify(due)+'}){... on PostActionSuccess{post{id text status dueAt}}... on MutationError{message}}}';
+          let created;
+          try{created=(await request(mutation)).createPost;}
+          catch(error){const found=(await listing()).posts.edges.map(e=>e.node).find(p=>p.text===text);if(found){console.log('Recovered from unknown request status:',found.id,found.status);created={post:found};}else throw error;}
+          if(created?.message||!created?.post?.id)throw Error('Buffer did not accept post: '+(created?.message||'Unknown response'));
+          const id=created.post.id;
+          console.log('Buffer accepted post id',id,'due',created.post.dueAt,'initial status',created.post.status);
+          for(let i=0;i<22;i++){
+            await new Promise(resolve=>setTimeout(resolve,20000));
+            const found=(await listing()).posts.edges.map(e=>e.node).find(p=>p.id===id);
+            if(!found)throw Error('Post is missing from Buffer history');
+            console.log('Verification',i+1,'status',found.status);
+            if(found.status==='sent'){console.log('END-TO-END SUCCESS: GitHub scheduled post and Buffer reports sent',id);process.exit(0);}
+            if(found.status==='error')throw Error('Buffer reports failed publication for '+id);
+          }
+          throw Error('Buffer did not confirm sent before verification timeout; do not retry automatically');
+          NODE
