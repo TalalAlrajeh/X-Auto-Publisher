@@ -1,0 +1,43 @@
+name: X Auto Publisher
+on:
+  schedule:
+    - cron: '4,14,24,34,44,54 * * * *'
+      timezone: 'Asia/Riyadh'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: x-auto-publisher
+  cancel-in-progress: false
+jobs:
+  publisher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      PUBLISH_ENABLED: ${{ vars.PUBLISH_ENABLED || 'false' }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_CHANNEL_ID: ${{ vars.BUFFER_CHANNEL_ID }}
+      BUFFER_ORGANIZATION_ID: ${{ vars.BUFFER_ORGANIZATION_ID }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5-mini' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run safety tests
+        run: |
+          node --check src/publisher.mjs
+          node --test tests/*.test.mjs
+      - name: Prepare next post
+        run: node src/publisher.mjs
+      - name: Create failure incident
+        if: failure() && env.PUBLISH_ENABLED == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner,repo}=context.repo;
+            const title='X Auto Publisher: publishing needs attention';
+            const list=await github.rest.issues.listForRepo({owner,repo,state:'open',per_page:100});
+            if(!list.data.some(i=>i.title===title)) await github.rest.issues.create({owner,repo,title,body:'Automation failed. Inspect the latest GitHub Actions run. No ambiguous Buffer request is retried automatically.'});
