@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 4
     env:
       PUBLISH_ENABLED: ${{ github.event_name == 'push' && 'false' || vars.PUBLISH_ENABLED || 'false' }}
-      CHECK_CONNECTION: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+      CHECK_CONNECTION: ${{ github.event_name != 'schedule' && 'true' || 'false' }}
       BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
       BUFFER_CHANNEL_ID: ${{ vars.BUFFER_CHANNEL_ID }}
       BUFFER_ORGANIZATION_ID: ${{ vars.BUFFER_ORGANIZATION_ID }}
