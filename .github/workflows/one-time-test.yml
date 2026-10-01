@@ -6,7 +6,6 @@ permissions:
   contents: read
 jobs:
   end_to_end:
-    if: github.event.head_commit.message == 'test: execute one-time GitHub to Buffer to X publishing'
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
