@@ -3,6 +3,12 @@ on:
   schedule:
     - cron: '0,20,40 * * * *'
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/publish.yml'
 permissions:
   contents: read
   issues: write
@@ -14,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     env:
-      PUBLISH_ENABLED: ${{ vars.PUBLISH_ENABLED || 'false' }}
+      PUBLISH_ENABLED: ${{ github.event_name == 'push' && 'false' || vars.PUBLISH_ENABLED || 'false' }}
       CHECK_CONNECTION: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
       BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
       BUFFER_CHANNEL_ID: ${{ vars.BUFFER_CHANNEL_ID }}
