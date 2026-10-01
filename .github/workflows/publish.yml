@@ -1,7 +1,7 @@
 name: X Auto Publisher
 on:
   schedule:
-    - cron: '4,14,24,34,44,54 * * * *'
+    - cron: '0,20,40 * * * *'
   workflow_dispatch:
 permissions:
   contents: read
