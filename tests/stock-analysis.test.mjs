@@ -49,8 +49,25 @@ test('numerical analysis spans five safe X thread posts',()=>{
 });
 test('qualitative fallback names a particular Saudi stock and states live-data limits',()=>{
  const plan={day:{year:2026,month:10,day:4},index:6},s=qualitativeThread(plan,[]);
- assert.equal(s.length,3);assert.equal(SAUDI_PROFILES.length,5);
- assert.match(s[0],/قراءة نوعية لسهم/);assert.match(s[2],/دعمًا أو مقاومة رقمية/);
+ assert.equal(s.length,4);assert.equal(SAUDI_PROFILES.length,5);
+ assert.match(s[0],/تحليل سهم/);assert.match(s[3],/دعمًا أو مقاومة رقمية/);
  for(const part of s)assert.equal(verifyText(part),part);
  assert.notDeepEqual(qualitativeThread({...plan,day:{year:2026,month:10,day:5}},[]),s);
+});
+
+test('officially disclosed Saudi figures are used only within their 120-day validity window',()=>{
+ const plan={day:{year:2026,month:10,day:4},index:6};
+ const thread=qualitativeThread(plan,[]);
+ assert.equal(thread.length,4);
+ for(const t of thread)assert.equal(verifyText(t),t);
+ const aramco={...plan,day:{year:2026,month:10,day:5}};
+ const item=qualitativeThread(aramco,[]);
+ assert.equal(item.length,4);
+ for(const part of item)assert.ok(part.length<=280);
+ const verifiedCount=SAUDI_PROFILES.filter(p=>p.snapshot).length;
+ assert.equal(verifiedCount,3);
+ for(const p of SAUDI_PROFILES.filter(p=>p.snapshot)){
+  assert.match(p.snapshot.published,/^2026-\d\d-\d\d$/);
+  assert.ok(p.snapshot.text.includes('المصدر:'));
+ }
 });
