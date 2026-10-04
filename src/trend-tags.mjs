@@ -18,7 +18,7 @@ export const MATCHES=[
  {words:['الفائدة','interest rate'],tag:'#أسعار_الفائدة'}
 ];
 const UNSAFE=/(حرب|هجوم|حريق|صراع|انفجار|تفجير|اغتيال|انتخاب|سياس|جيوسياس|war|attack|fire|missile|election|geopolitic)/iu;
-const clean=s=>String(s||'').toLocaleLowerCase('en').replace(/<!\[CDATA\[|\]\]>/gu,'').replace(/&amp;/gu,'&').replace(/<[^>]+>/gu,'').trim();
+const clean=s=>String(s||'').toLocaleLowerCase('en').replace(/<!\[CDATA\[|\]\]>/giu,'').replace(/&amp;/gu,'&').replace(/<[^>]+>/gu,'').trim();
 export function titlesFromRss(xml){
  return [...String(xml).matchAll(/<item>([\s\S]*?)<\/item>/giu)].slice(0,50)
   .map(x=>clean(x[1].match(/<title>([\s\S]*?)<\/title>/iu)?.[1]))
