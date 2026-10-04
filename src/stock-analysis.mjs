@@ -81,7 +81,7 @@ export function analysisThread(stock,finance,price,match=null){
   'فنيًا: الإغلاق '+usd(price.close)+'، ومتوسط 20 جلسة '+usd(price.ma20)+'، و50 جلسة '+usd(price.ma50)+
     '. الاتجاه الوصفي '+price.state+'. نطاق آخر 20 جلسة سابقة: '+usd(price.low20)+'–'+usd(price.high20)+'. بيانات إغلاق Stooq غير لحظية. #'+stock.symbol,
   'المسار المحتمل: الثبات فوق '+usd(price.high20)+' بإغلاقات مؤكدة قد يدعم تحسن الاتجاه؛ والعودة دون '+usd(price.low20)+
-    ' تضعف القراءة الفنية. المستويات تاريخية وليست أهدافًا أو ضمانات. لا توجد توصية شراء أو بيع. #'+stock.symbol
+    ' تضعف القراءة الفنية. المستويات تاريخية وليست أهدافًا أو ضمانات. معلومات وصفية لا تمثل تعليمات تداول. #'+stock.symbol
  ];
  for(const part of thread)if([...part].length>280||CENSORED.test(part))throw Error('Unsafe or overlong thread part');
  return {thread,googleTrend:match};
@@ -93,7 +93,7 @@ async function get(url,timeout=13000,headers={}){
 }
 export async function prepareStockAnalysis(plan,history,now=new Date()){
  const day=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);
- for(let i=0;i<STOCKS.length;i++){
+ for(let i=0;i<Math.min(STOCKS.length,2);i++){
   const stock=STOCKS[(day+i)%STOCKS.length];
   if(history.some(p=>p.text?.includes('تحليل سهم '+stock.name+' ('+stock.symbol+')')))continue;
   try{
@@ -115,4 +115,37 @@ export async function prepareStockAnalysis(plan,history,now=new Date()){
   }catch(e){console.log('Stock data rejected for',stock.symbol,e.message);}
  }
  throw Error('No company with fully verifiable financial and price records');
+}
+
+export const SAUDI_PROFILES=[
+ {symbol:'2222',name:'أرامكو السعودية',activity:'إنتاج النفط والغاز والتكرير والبتروكيماويات',
+  finances:'متوسط أسعار البيع وحجم الإنتاج والإنفاق الرأسمالي والتدفقات الحرة وتغطية التوزيعات',
+  strong:'تحسن أسعار البيع أو التدفق النقدي مع انضباط الإنفاق',weak:'ضغط الهوامش أو تراجع التدفقات مقابل الالتزامات',tag:'#أرامكو'},
+ {symbol:'7010',name:'الاتصالات السعودية STC',activity:'الاتصالات والبنية الرقمية والخدمات التقنية',
+  finances:'نمو إيرادات الخدمات والهوامش والتدفق التشغيلي والإنفاق على الشبكات وصافي المديونية',
+  strong:'نمو الأعمال الرقمية وتحسن الهوامش والتدفقات',weak:'تباطؤ نمو الخدمات أو ارتفاع تكلفة التوسع',tag:'#STC'},
+ {symbol:'1120',name:'مصرف الراجحي',activity:'التمويل والخدمات المصرفية المتوافقة مع أحكام الشريعة',
+  finances:'صافي دخل التمويل ونمو المحفظة وتكلفة الائتمان ونسبة القروض المتعثرة وكفاية رأس المال',
+  strong:'نمو التمويل بضوابط ائتمانية وتكلفة مخاطر مستقرة',weak:'ارتفاع المخصصات أو ضغط الهوامش التمويلية',tag:'#الراجحي'},
+ {symbol:'2010',name:'سابك',activity:'الصناعات البتروكيماوية والكيماويات',
+  finances:'هوامش المنتجات وتكلفة اللقيم والطلب العالمي والتدفق التشغيلي ومديونية الشركة',
+  strong:'تحسن فروق أسعار المنتجات والطلب التشغيلي',weak:'تراجع الهوامش أو ارتفاع تكاليف الإنتاج',tag:'#سابك'},
+ {symbol:'2082',name:'أكوا باور',activity:'تطوير وتشغيل مشاريع الطاقة والمياه',
+  finances:'المشاريع قيد التنفيذ وتكاليف التمويل والتدفق التشغيلي والديون المرتبطة بالمشاريع',
+  strong:'بدء التشغيل وتحسن تحصيل التدفقات من المشاريع',weak:'تأخر التشغيل أو زيادة تكلفة التمويل',tag:'#أكوا_باور'}
+];
+export function qualitativeThread(plan,history){
+ const ordinal=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);
+ for(let i=0;i<SAUDI_PROFILES.length;i++){
+  const company=SAUDI_PROFILES[(ordinal+i)%SAUDI_PROFILES.length];
+  const thread=[
+   '📊 قراءة نوعية لسهم '+company.name+' ('+company.symbol+'): تعمل الشركة في '+company.activity+'. هذه قراءة لطبيعة النشاط وعوامل الأداء، وليست تحديثًا لآخر سعر أو نتائج مالية. '+company.tag+' #الأسهم_السعودية',
+   'ماليًا، تُقيّم '+company.name+' عبر '+company.finances+'. قوة المركز المالي تُحسم بأرقام القوائم والإفصاحات الأخيرة؛ ولا يمكن استنتاجها من شهرة الشركة أو حركة السهم. المصدر المرجعي: إفصاحات تداول السعودية. #تحليل_مالي',
+   'المسار المحتمل لسهم '+company.name+': يتحسن تصور الأداء إذا تحقق '+company.strong+'؛ بينما يبقى '+company.weak+' من المخاطر. فنيًا لا نضع دعمًا أو مقاومة رقمية من دون أسعار حديثة موثوقة. '+company.tag
+  ];
+  if(thread.some(t=>t.length>280||CENSORED.test(t)))continue;
+  if(history.some(p=>p.text===thread[0]))continue;
+  return thread;
+ }
+ throw Error('No unused company profile available');
 }
