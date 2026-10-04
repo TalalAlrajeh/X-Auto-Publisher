@@ -51,6 +51,21 @@ export const CMA_EDU=[
 'يختلف تاريخ موافقة هيئة السوق المالية على الطرح عن تاريخ بدء الاكتتاب أو التداول، ويجب الرجوع إلى إعلانات الجهات المعنية لكل مرحلة. للعلم. #تداول'
 ];
 export function cmaPost(plan,history,recent=history,now=new Date()){for(const item of CMA_DECISIONS){const age=now.getTime()-Date.parse(item.date+'T00:00:00+03:00');if(age>=0&&age<14*86400000&&!sameText(item.text,history))return verifyText(item.text);}const ordinal=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);for(let offset=0;offset<CMA_EDU.length;offset++){const text=CMA_EDU[(ordinal+offset)%CMA_EDU.length];if(!sameText(text,recent))return verifyText(text);}throw Error('No unused CMA content');}
+export function enrichEducational(text){
+ const bank=[
+  [/تاسي|السوق السعودي|تداول|الأسهم_السعودية/u,'لفهم الصورة الأوسع تُراجع السيولة واتساع حركة الشركات والقطاعات إلى جانب المؤشر العام.'],
+  [/الأمريكية|الأسهم_الأمريكية|ناسداك|S&P|SEC/u,'تختلف القراءة بحسب الفترة المالية وطريقة احتساب المؤشر؛ لذا يجب الرجوع إلى بيانات المصدر الأصلية.'],
+  [/الذهب/u,'قد تختلف الأسعار المعروضة باختلاف السوق والتوقيت والرسوم؛ لذلك ينبغي تحديد معيار المقارنة.'],
+  [/النفط|السلع|العقود/u,'تختلف الأسعار وفق معيار السلعة وتاريخ التسليم، ولا تعبر حركة عقد واحد عن جميع آجال السوق.'],
+  [/الفائدة|السندات|الاقتصاد/u,'تُقرأ هذه المتغيرات مع آجال الاستحقاق والبيانات المعلنة، لا بمعزل عن سياقها.'],
+  [/الصناديق|الاستثمار_المتوافق/u,'عند المقارنة تُراجع نشرة الصندوق واستراتيجية الاستثمار والرسوم وطريقة احتساب الأداء.']
+ ];
+ const suffix=(bank.find(([pattern])=>pattern.test(text))||[])[1]||'تساعد المقارنة بين الفترات والرجوع إلى بيانات المصدر على فهم هذه المعلومة.';
+ const index=text.indexOf(' #');
+ if(index<0)return text;
+ const expanded=text.slice(0,index)+' '+suffix+text.slice(index);
+ return [...expanded].length<=275?verifyText(expanded):text;
+}
 async function prepareFinance(plan,history){const ordinal=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);for(let offset=0;offset<FINANCE.length;offset++){const t=FINANCE[(ordinal*8+plan.index+offset)%FINANCE.length];if(!sameText(t,history))return verifyText(t);}throw Error('No unused verified educational post');}
 function weekend(plan,history){const ordinal=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);for(let offset=0;offset<DUENOX.length;offset++){const t=DUENOX[(ordinal*8+plan.index+offset)%DUENOX.length];if(!sameText(t,history))return verifyText(t);}throw Error('No unused DueNox post');}
 export async function run(){if(process.env.PUBLISH_ENABLED!=='true'&&process.env.CHECK_CONNECTION==='true'){const token=process.env.BUFFER_API_KEY,org=process.env.BUFFER_ORGANIZATION_ID,channel=process.env.BUFFER_CHANNEL_ID;if(!token||!org||!channel)throw Error('Missing Buffer API key, channel ID or organization ID');const items=await posts(token,org,channel);console.log('READ-ONLY connection validated; fetched',items.length,'posts; NO posts created');return;}const plan=upcoming();if(!plan){console.log('No slot in 10–45 minute preparation window');return;}console.log('Upcoming Riyadh slot',plan.slot,plan.due.toISOString());if(process.env.PUBLISH_ENABLED!=='true'){console.log('DRY RUN: publication disabled');return;}
@@ -67,7 +82,7 @@ else if(plan.index===6){
  catch(error){console.log('Verified numerical stock analysis unavailable:',error.message,'; using explicitly qualitative company analysis');thread=qualitativeThread(plan,recent);}
  for(const part of thread)verifyText(part);
  text=thread[0];
-}else text=await prepareFinance(plan,recent);
+}else text=enrichEducational(await prepareFinance(plan,recent));
 if(weekday!==5&&weekday!==6){
  if(thread){
   const tagged=await addRelevantSearchTag(thread[0]);
