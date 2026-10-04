@@ -34,6 +34,21 @@ jobs:
         run: |
           node --check src/publisher.mjs
           node --test tests/*.test.mjs
+      - name: Check free stock data (read-only, code updates only)
+        if: github.event_name == 'push'
+        env:
+          SEC_CONTACT_EMAIL: ${{ vars.SEC_CONTACT_EMAIL || '' }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {prepareStockAnalysis} from './src/stock-analysis.mjs';
+          import {local} from './src/publisher.mjs';
+          try {
+            const thread=await prepareStockAnalysis({day:local(),index:6},[],new Date());
+            console.log('FREE STOCK DATA: VERIFIED:',thread.length,'thread items');
+          } catch (error) {
+            console.log('FREE STOCK DATA: UNAVAILABLE; the qualified Saudi-company fallback will apply:',error.message);
+          }
+          NODE
       - name: Prepare next post
         run: node src/publisher.mjs
       - name: Create failure incident
