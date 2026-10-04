@@ -143,9 +143,10 @@ export function qualitativeThread(plan,history){
    'ماليًا، تُقيّم '+company.name+' عبر '+company.finances+'. قوة المركز المالي تُحسم بأرقام القوائم والإفصاحات الأخيرة؛ ولا يمكن استنتاجها من شهرة الشركة أو حركة السهم. المصدر المرجعي: إفصاحات تداول السعودية. #تحليل_مالي',
    'المسار المحتمل لسهم '+company.name+': يتحسن تصور الأداء إذا تحقق '+company.strong+'؛ بينما يبقى '+company.weak+' من المخاطر. فنيًا لا نضع دعمًا أو مقاومة رقمية من دون أسعار حديثة موثوقة. '+company.tag
   ];
-  if(thread.some(t=>t.length>280||CENSORED.test(t)))continue;
-  if(history.some(p=>p.text===thread[0]))continue;
-  return thread;
+  const dated=thread.map(t=>t+' | '+plan.day.day+'/'+plan.day.month+'/'+plan.day.year);
+  if(dated.some(t=>t.length>280||CENSORED.test(t)))continue;
+  if(history.some(p=>p.text===dated[0]))continue;
+  return dated;
  }
  throw Error('No unused company profile available');
 }
