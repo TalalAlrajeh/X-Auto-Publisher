@@ -49,6 +49,21 @@ jobs:
             console.log('FREE STOCK DATA: UNAVAILABLE; the qualified Saudi-company fallback will apply:',error.message);
           }
           NODE
+      - name: Check Saudi Google Trends RSS (read-only, code updates only)
+        if: github.event_name == 'push'
+        run: |
+          node --input-type=module <<'NODE'
+          import {titlesFromRss} from './src/trend-tags.mjs';
+          try {
+            const response=await fetch('https://trends.google.com/trending/rss?geo=SA',{signal:AbortSignal.timeout(6500)});
+            const xml=response.ok?await response.text():'';
+            const titles=titlesFromRss(xml);
+            console.log('SAUDI SEARCH TRENDS:',response.status,'items:',titles.length);
+            if(!titles.length)console.log('No verified trend labels; existing topical hashtags remain');
+          } catch(error) {
+            console.log('Search trends unavailable; existing topical hashtags remain:',error.message);
+          }
+          NODE
       - name: Prepare next post
         run: node src/publisher.mjs
       - name: Create failure incident
