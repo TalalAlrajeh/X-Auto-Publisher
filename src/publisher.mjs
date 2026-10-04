@@ -1,5 +1,6 @@
 import {pathToFileURL} from 'node:url';
 import {prepareStockAnalysis,qualitativeThread} from './stock-analysis.mjs';
+import {addRelevantSearchTag} from './trend-tags.mjs';
 export const SLOTS=['07:30','09:00','10:30','12:00','16:00','18:00','20:00','22:00'];
 const TZ='Asia/Riyadh', API='https://api.buffer.com';
 const BLOCK=/(انتخاب|سياس(?:ة|ي|يين)|حرب|جيوسياس|إرهاب|ارهاب|صراع|هجوم|اشتر|اشتري|شراء الآن|بع الآن|ادخل الآن|سهم ناري|انهيار|هدف مضمون|ربح مضمون|توصية|فرصة لا تعوض|buy now|sell now|guaranteed|election|geopolitic|warfare)/iu;
@@ -67,6 +68,14 @@ else if(plan.index===6){
  for(const part of thread)verifyText(part);
  text=thread[0];
 }else text=await prepareFinance(plan,recent);
+if(weekday!==5&&weekday!==6){
+ if(thread){
+  const tagged=await addRelevantSearchTag(thread[0]);
+  thread=[tagged,...thread.slice(1)];
+  text=tagged;
+ }else text=await addRelevantSearchTag(text);
+ verifyText(text);
+}
 const fresh=await posts(token,org,channel);if(fresh.some(p=>sameSlot(p,plan.due)||(sameText(text,[p])&&(CMA_DECISIONS.some(item=>item.text===text)||Date.now()-new Date(p.createdAt).getTime()<72*3600000))||(['scheduled','sending'].includes(p.status)&&new Date(p.dueAt)>new Date()))){console.log('Slot or content now covered; no duplicate');return;}
 if(plan.due.getTime()-Date.now()<120000)throw Error('Too close to scheduled time');const meta=thread?',metadata:{twitter:{thread:['+thread.map(t=>'{text:'+JSON.stringify(t)+'}').join(',')+']}}':'';
 const query='mutation {createPost(input:{text:'+JSON.stringify(text)+',channelId:'+JSON.stringify(channel)+',schedulingType:automatic,mode:customScheduled,dueAt:'+JSON.stringify(plan.due.toISOString())+meta+'}){... on PostActionSuccess{post{id dueAt status}}... on MutationError{message}}}';let created;try{created=(await gql(query,token)).createPost;}catch(error){const check=await posts(token,org,channel);if(check.some(p=>sameSlot(p,plan.due))){console.log('Creation recovered from Buffer history');return;}throw error;}if(created?.message||!created?.post?.id||!sameSlot(created.post,plan.due))throw Error('Buffer did not confirm correct scheduled post: '+(created?.message||''));console.log('Scheduled post',created.post.id,'at',created.post.dueAt);}
