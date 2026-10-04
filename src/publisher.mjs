@@ -1,4 +1,5 @@
 import {pathToFileURL} from 'node:url';
+import {prepareStockAnalysis,qualitativeThread} from './stock-analysis.mjs';
 export const SLOTS=['07:30','09:00','10:30','12:00','16:00','18:00','20:00','22:00'];
 const TZ='Asia/Riyadh', API='https://api.buffer.com';
 const BLOCK=/(انتخاب|سياس(?:ة|ي|يين)|حرب|جيوسياس|إرهاب|ارهاب|صراع|هجوم|اشتر|اشتري|شراء الآن|بع الآن|ادخل الآن|سهم ناري|انهيار|هدف مضمون|ربح مضمون|توصية|فرصة لا تعوض|buy now|sell now|guaranteed|election|geopolitic|warfare)/iu;
@@ -56,7 +57,17 @@ const token=process.env.BUFFER_API_KEY,org=process.env.BUFFER_ORGANIZATION_ID,ch
 if(history.some(p=>sameSlot(p,plan.due))){console.log('Already scheduled/sent for this slot');return;}
 const overdue=history.filter(p=>p.dueAt&&p.status!=='sent'&&Date.now()-new Date(p.dueAt).getTime()>15*60000&&Date.now()-new Date(p.dueAt).getTime()<4*3600000&&SLOTS.some(s=>sameSlot(p,at(plan.day,s))));if(overdue.length)throw Error('Previous scheduled post not confirmed as sent');
 if(history.some(p=>['scheduled','sending'].includes(p.status)&&new Date(p.dueAt)>new Date())){console.log('A future Buffer post already exists');return;}
-const weekday=new Date(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)).getUTCDay(),text=(weekday===5||weekday===6)?weekend(plan,recent):(plan.index===4?cmaPost(plan,history,recent):await prepareFinance(plan,recent));
+const weekday=new Date(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)).getUTCDay();
+let thread=null,text;
+if(weekday===5||weekday===6)text=weekend(plan,recent);
+else if(plan.index===4)text=cmaPost(plan,history,recent);
+else if(plan.index===6){
+ try{thread=await prepareStockAnalysis(plan,recent);}
+ catch(error){console.log('Verified numerical stock analysis unavailable:',error.message,'; using explicitly qualitative company analysis');thread=qualitativeThread(plan,recent);}
+ for(const part of thread)verifyText(part);
+ text=thread[0];
+}else text=await prepareFinance(plan,recent);
 const fresh=await posts(token,org,channel);if(fresh.some(p=>sameSlot(p,plan.due)||(sameText(text,[p])&&(CMA_DECISIONS.some(item=>item.text===text)||Date.now()-new Date(p.createdAt).getTime()<72*3600000))||(['scheduled','sending'].includes(p.status)&&new Date(p.dueAt)>new Date()))){console.log('Slot or content now covered; no duplicate');return;}
-if(plan.due.getTime()-Date.now()<120000)throw Error('Too close to scheduled time');const query='mutation {createPost(input:{text:'+JSON.stringify(text)+',channelId:'+JSON.stringify(channel)+',schedulingType:automatic,mode:customScheduled,dueAt:'+JSON.stringify(plan.due.toISOString())+'}){... on PostActionSuccess{post{id dueAt status}}... on MutationError{message}}}';let created;try{created=(await gql(query,token)).createPost;}catch(error){const check=await posts(token,org,channel);if(check.some(p=>sameSlot(p,plan.due))){console.log('Creation recovered from Buffer history');return;}throw error;}if(created?.message||!created?.post?.id||!sameSlot(created.post,plan.due))throw Error('Buffer did not confirm correct scheduled post: '+(created?.message||''));console.log('Scheduled post',created.post.id,'at',created.post.dueAt);}
+if(plan.due.getTime()-Date.now()<120000)throw Error('Too close to scheduled time');const meta=thread?',metadata:{twitter:{thread:['+thread.map(t=>'{text:'+JSON.stringify(t)+'}').join(',')+']}}':'';
+const query='mutation {createPost(input:{text:'+JSON.stringify(text)+',channelId:'+JSON.stringify(channel)+',schedulingType:automatic,mode:customScheduled,dueAt:'+JSON.stringify(plan.due.toISOString())+meta+'}){... on PostActionSuccess{post{id dueAt status}}... on MutationError{message}}}';let created;try{created=(await gql(query,token)).createPost;}catch(error){const check=await posts(token,org,channel);if(check.some(p=>sameSlot(p,plan.due))){console.log('Creation recovered from Buffer history');return;}throw error;}if(created?.message||!created?.post?.id||!sameSlot(created.post,plan.due))throw Error('Buffer did not confirm correct scheduled post: '+(created?.message||''));console.log('Scheduled post',created.post.id,'at',created.post.dueAt);}
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)run().catch(e=>{console.error('PUBLISHER_FAILED:',e.message);process.exitCode=1;});
