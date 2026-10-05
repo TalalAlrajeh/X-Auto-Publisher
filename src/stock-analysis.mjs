@@ -73,15 +73,15 @@ export function analysisThread(stock,finance,price,match=null){
  const billions=n=>(n/1e9).toFixed(1)+' مليار دولار',usd=n=>n.toFixed(2)+' دولار';
  const percent=n=>(n>=0?'+':'')+n.toFixed(1)+'%';
  const thread=[
-  '📊 تحليل سهم '+stock.name+' ('+stock.symbol+'): نتائج الشركة للسنة المنتهية '+finance.end+'، والقراءة الفنية عند إغلاق '+price.date+'. #'+stock.symbol+' #الأسهم_الأمريكية',
-  'ماليًا: الإيرادات '+billions(finance.revenue)+' (تغير سنوي '+percent(finance.yoy)+')، وصافي الربح '+billions(finance.profit)+
+  '📊 خلنا نفكك سهم '+stock.name+' ('+stock.symbol+'): نتائج الشركة للسنة المنتهية '+finance.end+'، والقراءة الفنية عند إغلاق '+price.date+'. #'+stock.symbol+' #الأسهم_الأمريكية',
+  'ماليًا، اللي يهمني هنا: الإيرادات '+billions(finance.revenue)+' (تغير سنوي '+percent(finance.yoy)+')، وصافي الربح '+billions(finance.profit)+
     '، والهامش الصافي '+percent(finance.margin)+'. التدفقات التشغيلية '+billions(finance.operatingCash)+'. المصدر: التقرير السنوي 10-K عبر SEC. #تحليل_مالي',
-  'المركز المالي: أصول '+billions(finance.assets)+' والتزامات '+billions(finance.liabilities)+' ('+percent(finance.liabilitiesPct)+
-    ' من الأصول). الالتزامات ليست كلها ديونًا، ويجب قراءة هذه النسبة مع طبيعة أعمال الشركة وتدفقاتها. #القوائم_المالية',
-  'فنيًا: الإغلاق '+usd(price.close)+'، ومتوسط 20 جلسة '+usd(price.ma20)+'، و50 جلسة '+usd(price.ma50)+
-    '. الاتجاه الوصفي '+price.state+'. نطاق آخر 20 جلسة سابقة: '+usd(price.low20)+'–'+usd(price.high20)+'. بيانات إغلاق Stooq غير لحظية. #'+stock.symbol,
-  'المسار المحتمل: الثبات فوق '+usd(price.high20)+' بإغلاقات مؤكدة قد يدعم تحسن الاتجاه؛ والعودة دون '+usd(price.low20)+
-    ' تضعف القراءة الفنية. المستويات تاريخية وليست أهدافًا أو ضمانات. معلومات وصفية لا تمثل تعليمات تداول. #'+stock.symbol
+  'وش وضع الشركة ماليًا؟ الأصول '+billions(finance.assets)+' والتزامات '+billions(finance.liabilities)+' ('+percent(finance.liabilitiesPct)+
+    ' من الأصول). وانتبه: الالتزامات مو كلها ديون، فلازم تنقرأ مع طبيعة النشاط والتدفقات. #القوائم_المالية',
+  'فنيًا، الصورة كذا: الإغلاق '+usd(price.close)+'، ومتوسط 20 جلسة '+usd(price.ma20)+'، و50 جلسة '+usd(price.ma50)+
+    '. الاتجاه حاليًا '+price.state+'. نطاق آخر 20 جلسة سابقة: '+usd(price.low20)+'–'+usd(price.high20)+'. بيانات الإغلاق من Stooq وغير لحظية. #'+stock.symbol,
+  'وش أراقب قدام؟ الثبات فوق '+usd(price.high20)+' بإغلاقات مؤكدة ممكن يدعم استمرار الحركة؛ والرجوع تحت '+usd(price.low20)+
+    ' يضعف الصورة الفنية. هذي مستويات تاريخية، مو أهداف مضمونة ولا توصية تداول. #'+stock.symbol
  ];
  for(const part of thread)if([...part].length>280||CENSORED.test(part))throw Error('Unsafe or overlong thread part');
  return {thread,googleTrend:match};
@@ -144,7 +144,7 @@ export function qualitativeThread(plan,history){
   const snapshot=company.snapshot,age=snapshot?(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)-Date.parse(snapshot.published+'T00:00:00Z'))/86400000:9999;
   const verified=Boolean(snapshot&&age>=0&&age<=120);
   const thread=[
-   '📊 تحليل سهم '+company.name+' ('+company.symbol+'): تعمل الشركة في '+company.activity+'. القراءة التالية تميّز بين الأرقام المعلنة وعوامل الأداء، ولا تدّعي سعرًا لحظيًا. '+company.tag+' #الأسهم_السعودية',
+   '📊 خلنا نفكك سهم '+company.name+' ('+company.symbol+'): تعمل الشركة في '+company.activity+'. القراءة التالية تميّز بين الأرقام المعلنة وعوامل الأداء، ولا تدّعي سعرًا لحظيًا. '+company.tag+' #الأسهم_السعودية',
    verified?'النتائج المعلنة عن '+snapshot.period+': '+snapshot.text+' '+company.tag:
     'قراءة النشاط: تتأثر '+company.name+' بعوامل تشغيلية وتمويلية مختلفة؛ البيانات المالية الحديثة غير متاحة للتحقق هنا، لذلك لا نعرض أرقامًا أو حكمًا قاطعًا عن مركزها المالي. '+company.tag,
    'ماليًا: أبرز ما يُراجع عند تقييم '+company.name+' هو '+company.finances+'. لا يكفي رقم الربح منفردًا؛ الأهم مقارنته بالفترة المماثلة والتدفقات والمركز المالي. #تحليل_مالي',
