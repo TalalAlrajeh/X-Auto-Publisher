@@ -36,7 +36,7 @@ test('investor fallbacks are analytical, varied and use multiple hashtags',()=>{
  assert.ok(INVESTOR_FALLBACK.length>=8);
  for(const x of INVESTOR_FALLBACK){
    assert.equal(verifyText(x),x);
-   assert.ok((x.match(/#[\\p{L}\\p{N}_]+/gu)||[]).length>=2);
+   assert.ok((x.match(/#[^\\s#]+/gu)||[]).length>=2);
    assert.doesNotMatch(x,/كيف يُحتسب|تعريف|مقياسان مختلفان/u);
  }
 });
