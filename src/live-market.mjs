@@ -5,7 +5,7 @@ export const FEEDS=[
  {name:'أرقام - الأسواق العالمية',url:'https://www.argaam.com/ar/rss/internationmarket-mainnewsar?sectionid=1334'},
  {name:'أرقام - الشركات',url:'https://www.argaam.com/ar/rss/companies?sectionid=1543'}
 ];
-const BANNED=/(انتخاب|سياس|حرب|هجوم|صراع|جيوسياس|إرهاب|روسيا|أوكرانيا|اوكرانيا|إسرائيل|اسرائيل|إيران|ايران|ترامب|بايدن|زيلينسكي|كرملين|war|attack|election|geopolitic)/iu;
+const BANNED=/(انتخاب|سياسي|حرب|هجوم|صراع|جيوسياس|إرهاب|روسيا|أوكرانيا|اوكرانيا|إسرائيل|اسرائيل|إيران|ايران|ترامب|بايدن|زيلينسكي|كرملين|war|attack|election|geopolitic)/iu;
 const LOW=/(استقالة عضو|فتح باب الترشح|لجنة الترشيحات|دعوة مساهمي|اجتماع الجمعية)/iu;
 const clean=s=>String(s||'').replace(/<!\[CDATA\[|\]\]>/giu,'').replace(/<[^>]+>/gu,' ').replace(/&nbsp;|&#160;/gu,' ').replace(/&amp;/gu,'&').replace(/\s+/gu,' ').trim();
 function pick(b,t){const m=b.match(new RegExp('<'+t+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\/'+t+'>','iu'));return clean(m?.[1]||'');}
