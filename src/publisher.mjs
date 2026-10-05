@@ -1,10 +1,21 @@
 import {pathToFileURL} from 'node:url';
 import {prepareStockAnalysis,qualitativeThread} from './stock-analysis.mjs';
 import {addRelevantSearchTag} from './trend-tags.mjs';
+import {prepareLiveInsight,prepareDebtInsight} from './live-market.mjs';
 export const SLOTS=['07:30','09:00','10:30','12:00','16:00','18:00','20:00','22:00'];
-export const PREPARE_WINDOW={min:5,max:95};
+export const PREPARE_WINDOW={min:3,max:150};
 const TZ='Asia/Riyadh', API='https://api.buffer.com';
 const BLOCK=/(انتخاب|سياس(?:ة|ي|يين)|حرب|جيوسياس|إرهاب|ارهاب|صراع|هجوم|اشتر|اشتري|شراء الآن|بع الآن|ادخل الآن|سهم ناري|انهيار|هدف مضمون|ربح مضمون|توصية|فرصة لا تعوض|buy now|sell now|guaranteed|election|geopolitic|warfare)/iu;
+export const INVESTOR_FALLBACK=[
+'📌 سهم نمو يرفع الإيرادات لكن التدفق النقدي التشغيلي يتراجع؟ هنا أبطئ: النمو المحاسبي لا يكفي إذا كان يحتاج تمويلًا مستمرًا. راقب التحويل النقدي وهوامش الربح قبل الحكم على جودة النمو. #أسهم_النمو #تحليل_مالي',
+'💵 سهم يوزع 6% ليس أفضل تلقائيًا من أداة دين بعائد قريب. قارن استدامة التدفق النقدي، نمو التوزيعات، ومخاطر رأس المال؛ العائد المرتفع قد يكون نتيجة هبوط السعر لا قوة الشركة. #أسهم_التوزيعات #أدوات_الدين',
+'🧺 عند مقارنة صندوقين يتتبعان نفس السوق، لا تبدأ بالأداء التاريخي فقط: الرسوم، فرق التتبع، السيولة، وسياسة التوزيع قد تصنع فرقًا ملموسًا على المدى الطويل. #الصناديق_الاستثمارية #ETF',
+'🏦 في أدوات الدين، العائد ليس الرقم الوحيد: كلما طال الاستحقاق زادت حساسية السعر لتغير الفائدة. قارن المدة والعائد والسيولة قبل وضع السند أو الصك بجوار الأسهم في المحفظة. #الصكوك #أدوات_الدين',
+'📈 شركة تنمو أرباحها أسرع من إيراداتها تستحق سؤالًا: هل السبب تحسن الهامش والتشغيل أم مكاسب غير متكررة؟ الفرق بين الاثنين يغير جودة النمو بالكامل. #نتائج_الشركات #أسهم_النمو',
+'💸 إذا خرجت المؤسسات الأجنبية بينما تشتري الصناديق المحلية، لا أفسر الحركة من طرف واحد. المهم حجم صافي التدفقات مقارنة بسيولة السوق والقطاعات التي تستقبل الشراء. #تاسي #السيولة',
+'🇺🇸 أسهم النمو الأمريكية حساسة لعوائد السندات الطويلة: ارتفاع العائد يرفع معدل الخصم على الأرباح المستقبلية. لذلك أراقب 10 سنوات مع ناسداك، لا المؤشر منفردًا. #الأسهم_الأمريكية #السندات',
+'🔍 صندوق توزيعات مرتفع العائد قد يخفي تركيزًا قطاعيًا أو تباطؤ نمو. راقب جودة الشركات الداخلة، نمو التوزيعات، والرسوم قبل مقارنة العائد بصندوق سوق واسع. #أسهم_التوزيعات #الصناديق_الاستثمارية'
+];
 export const DUENOX=[
 'هل ما زلت تتابع ديون العملاء في دفتر ورقي؟ يجمع DueNox حسابات العملاء والديون والدفعات في سجل رقمي. duenox.com #DueNox #إدارة_الديون',
 'مع DueNox يمكنك تسجيل دفعات العملاء وتحديث حساباتهم. duenox.com #DueNox #المشاريع_الصغيرة',
@@ -67,23 +78,31 @@ export function enrichEducational(text){
  const expanded=text.slice(0,index)+' '+suffix+text.slice(index);
  return [...expanded].length<=275?verifyText(expanded):text;
 }
-async function prepareFinance(plan,history){const ordinal=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);for(let offset=0;offset<FINANCE.length;offset++){const t=FINANCE[(ordinal*8+plan.index+offset)%FINANCE.length];if(!sameText(t,history))return verifyText(t);}throw Error('No unused verified educational post');}
+async function prepareInvestorFallback(plan,history){const ordinal=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);for(let offset=0;offset<INVESTOR_FALLBACK.length;offset++){const t=INVESTOR_FALLBACK[(ordinal*8+plan.index+offset)%INVESTOR_FALLBACK.length];if(!sameText(t,history))return verifyText(t);}throw Error('No unused investor fallback');}
 function weekend(plan,history){const ordinal=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);for(let offset=0;offset<DUENOX.length;offset++){const t=DUENOX[(ordinal*8+plan.index+offset)%DUENOX.length];if(!sameText(t,history))return verifyText(t);}throw Error('No unused DueNox post');}
-export async function run(){if(process.env.PUBLISH_ENABLED!=='true'&&process.env.CHECK_CONNECTION==='true'){const token=process.env.BUFFER_API_KEY,org=process.env.BUFFER_ORGANIZATION_ID,channel=process.env.BUFFER_CHANNEL_ID;if(!token||!org||!channel)throw Error('Missing Buffer API key, channel ID or organization ID');const items=await posts(token,org,channel);console.log('READ-ONLY connection validated; fetched',items.length,'posts; NO posts created');return;}const plan=upcoming();if(!plan){console.log('No slot in 5–95 minute preparation window');return;}console.log('Upcoming Riyadh slot',plan.slot,plan.due.toISOString());if(process.env.PUBLISH_ENABLED!=='true'){console.log('DRY RUN: publication disabled');return;}
+export async function run(){if(process.env.PUBLISH_ENABLED!=='true'&&process.env.CHECK_CONNECTION==='true'){const token=process.env.BUFFER_API_KEY,org=process.env.BUFFER_ORGANIZATION_ID,channel=process.env.BUFFER_CHANNEL_ID;if(!token||!org||!channel)throw Error('Missing Buffer API key, channel ID or organization ID');const items=await posts(token,org,channel);console.log('READ-ONLY connection validated; fetched',items.length,'posts; NO posts created');return;}const plan=upcoming();if(!plan){console.log('No slot in 3–150 minute preparation window');return;}console.log('Upcoming Riyadh slot',plan.slot,plan.due.toISOString());if(process.env.PUBLISH_ENABLED!=='true'){console.log('DRY RUN: publication disabled');return;}
 const token=process.env.BUFFER_API_KEY,org=process.env.BUFFER_ORGANIZATION_ID,channel=process.env.BUFFER_CHANNEL_ID;if(!token||!org||!channel)throw Error('Buffer credentials/IDs missing');const history=await posts(token,org,channel);const recent=history.filter(p=>Date.now()-new Date(p.createdAt).getTime()<72*3600000);
 if(history.some(p=>sameSlot(p,plan.due))){console.log('Already scheduled/sent for this slot');return;}
 const overdue=history.filter(p=>p.dueAt&&p.status!=='sent'&&Date.now()-new Date(p.dueAt).getTime()>15*60000&&Date.now()-new Date(p.dueAt).getTime()<4*3600000&&SLOTS.some(s=>sameSlot(p,at(plan.day,s))));if(overdue.length)throw Error('Previous scheduled post not confirmed as sent');
 if(history.some(p=>['scheduled','sending'].includes(p.status)&&new Date(p.dueAt)>new Date())){console.log('A future Buffer post already exists');return;}
 const weekday=new Date(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)).getUTCDay();
 let thread=null,text;
-if(weekday===5||weekday===6)text=weekend(plan,recent);
-else if(plan.index===4)text=cmaPost(plan,history,recent);
-else if(plan.index===6){
+if(plan.index===6){
  try{thread=await prepareStockAnalysis(plan,recent);}
- catch(error){console.log('Verified numerical stock analysis unavailable:',error.message,'; using explicitly qualitative company analysis');thread=qualitativeThread(plan,recent);}
+ catch(error){console.log('Verified numerical stock analysis unavailable:',error.message,'; using sourced Saudi company analysis');thread=qualitativeThread(plan,recent);}
  for(const part of thread)verifyText(part);
  text=thread[0];
-}else text=enrichEducational(await prepareFinance(plan,recent));
+}else if(plan.index===5&&Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000)%2===0){
+ try{text=await prepareDebtInsight();}
+ catch(error){console.log('Debt data unavailable:',error.message);try{text=await prepareLiveInsight(plan,recent);}catch(inner){text=await prepareInvestorFallback(plan,recent);}}
+}else{
+ try{text=await prepareLiveInsight(plan,recent);}
+ catch(error){
+  console.log('Live investment feed unavailable:',error.message);
+  if(plan.index===4){try{text=cmaPost(plan,history,recent);}catch(inner){text=await prepareInvestorFallback(plan,recent);}}
+  else text=await prepareInvestorFallback(plan,recent);
+ }
+}
 if(weekday!==5&&weekday!==6){
  if(thread){
   const tagged=await addRelevantSearchTag(thread[0]);
