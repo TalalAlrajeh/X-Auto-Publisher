@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SLOTS,PREPARE_WINDOW,local,at,upcoming,verifyText,sameSlot,sameText,DUENOX,FINANCE,CMA_DECISIONS,CMA_EDU,cmaPost,enrichEducational} from '../src/publisher.mjs';
+import {SLOTS,PREPARE_WINDOW,local,at,upcoming,verifyText,sameSlot,sameText,DUENOX,FINANCE,INVESTOR_FALLBACK,CMA_DECISIONS,CMA_EDU,cmaPost,enrichEducational} from '../src/publisher.mjs';
 test('exactly eight Riyadh slots',()=>assert.deepEqual(SLOTS,['07:30','09:00','10:30','12:00','16:00','18:00','20:00','22:00']));
 test('prepares a slot before its due time',()=>{const q=upcoming(new Date('2026-10-01T06:59:00Z'));assert.equal(q.slot,'10:30');assert.equal(q.due.toISOString(),'2026-10-01T07:30:00.000Z');});
 test('handles Riyadh timezone and date rollover',()=>{assert.equal(local(new Date('2026-10-01T20:40:00Z')).day,1);assert.equal(at({year:2026,month:10,day:2},'07:30').toISOString(),'2026-10-02T04:30:00.000Z');});
@@ -24,10 +24,19 @@ test('educational posts gain useful context without exceeding X limit',()=>{
 });
 
 test('expanded preparation window survives observed GitHub schedule jitter',()=>{
-  assert.deepEqual(PREPARE_WINDOW,{min:5,max:95});
+  assert.deepEqual(PREPARE_WINDOW,{min:3,max:150});
   const early=upcoming(new Date('2026-10-05T08:12:25Z'));
   assert.equal(early.slot,'12:00');
   assert.equal(early.due.toISOString(),'2026-10-05T09:00:00.000Z');
   const late=upcoming(new Date('2026-10-05T08:50:49Z'));
   assert.equal(late.slot,'12:00');
+});
+
+test('investor fallbacks are analytical, varied and use multiple hashtags',()=>{
+ assert.ok(INVESTOR_FALLBACK.length>=8);
+ for(const x of INVESTOR_FALLBACK){
+   assert.equal(verifyText(x),x);
+   assert.ok((x.match(/#[\\p{L}\\p{N}_]+/gu)||[]).length>=2);
+   assert.doesNotMatch(x,/كيف يُحتسب|تعريف|مقياسان مختلفان/u);
+ }
 });
