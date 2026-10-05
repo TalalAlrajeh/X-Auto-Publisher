@@ -50,7 +50,7 @@ test('numerical analysis spans five safe X thread posts',()=>{
 test('qualitative fallback names a particular Saudi stock and states live-data limits',()=>{
  const plan={day:{year:2026,month:10,day:4},index:6},s=qualitativeThread(plan,[]);
  assert.equal(s.length,4);assert.equal(SAUDI_PROFILES.length,5);
- assert.match(s[0],/تحليل سهم/);assert.match(s[3],/دعمًا أو مقاومة رقمية/);
+ assert.match(s[0],/خلنا نفكك سهم/);assert.match(s[3],/دعم ومقاومة/);
  for(const part of s)assert.equal(verifyText(part),part);
  assert.notDeepEqual(qualitativeThread({...plan,day:{year:2026,month:10,day:5}},[]),s);
 });
