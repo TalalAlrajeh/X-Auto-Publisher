@@ -70,10 +70,12 @@ jobs:
           node --input-type=module <<'NODE'
           import {prepareLiveInsight,prepareDebtInsight} from './src/live-market.mjs';
           import {local} from './src/publisher.mjs';
-          try {
-            const t=await prepareLiveInsight({day:local(),index:3},[],new Date());
-            console.log('LIVE MARKET FEED: VERIFIED:',t);
-          } catch(e) { console.log('LIVE MARKET FEED: UNAVAILABLE:',e.message); }
+          for (const index of [1,3,5,7]) {
+            try {
+              const t=await prepareLiveInsight({day:local(),index},[],new Date());
+              console.log('LIVE MARKET SLOT '+index+': VERIFIED:',t);
+            } catch(e) { console.log('LIVE MARKET SLOT '+index+': UNAVAILABLE:',e.message); }
+          }
           try {
             const t=await prepareDebtInsight();
             console.log('TREASURY DEBT DATA: VERIFIED:',t);
