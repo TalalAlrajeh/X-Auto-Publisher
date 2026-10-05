@@ -1,7 +1,7 @@
 name: X Auto Publisher
 on:
   schedule:
-    - cron: '0,20,40 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   publisher:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     env:
       PUBLISH_ENABLED: ${{ github.event_name == 'push' && 'false' || vars.PUBLISH_ENABLED || 'false' }}
       CHECK_CONNECTION: ${{ github.event_name != 'schedule' && 'true' || 'false' }}
@@ -63,6 +63,21 @@ jobs:
           } catch(error) {
             console.log('Search trends unavailable; existing topical hashtags remain:',error.message);
           }
+          NODE
+      - name: Check live investment feeds (read-only, code updates only)
+        if: github.event_name == 'push'
+        run: |
+          node --input-type=module <<'NODE'
+          import {prepareLiveInsight,prepareDebtInsight} from './src/live-market.mjs';
+          import {local} from './src/publisher.mjs';
+          try {
+            const t=await prepareLiveInsight({day:local(),index:3},[],new Date());
+            console.log('LIVE MARKET FEED: VERIFIED:',t);
+          } catch(e) { console.log('LIVE MARKET FEED: UNAVAILABLE:',e.message); }
+          try {
+            const t=await prepareDebtInsight();
+            console.log('TREASURY DEBT DATA: VERIFIED:',t);
+          } catch(e) { console.log('TREASURY DEBT DATA: UNAVAILABLE:',e.message); }
           NODE
       - name: Prepare next post
         run: node src/publisher.mjs
