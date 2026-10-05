@@ -81,7 +81,7 @@ export function analysisThread(stock,finance,price,match=null){
   'فنيًا، الصورة كذا: الإغلاق '+usd(price.close)+'، ومتوسط 20 جلسة '+usd(price.ma20)+'، و50 جلسة '+usd(price.ma50)+
     '. الاتجاه حاليًا '+price.state+'. نطاق آخر 20 جلسة سابقة: '+usd(price.low20)+'–'+usd(price.high20)+'. بيانات الإغلاق من Stooq وغير لحظية. #'+stock.symbol,
   'وش أراقب قدام؟ الثبات فوق '+usd(price.high20)+' بإغلاقات مؤكدة ممكن يدعم استمرار الحركة؛ والرجوع تحت '+usd(price.low20)+
-    ' يضعف الصورة الفنية. هذي مستويات تاريخية، مو أهداف مضمونة ولا توصية تداول. #'+stock.symbol
+    ' يضعف الصورة الفنية. هذي مستويات تاريخية، مو أهداف مضمونة ولا دعوة للتداول. #'+stock.symbol
  ];
  for(const part of thread)if([...part].length>280||CENSORED.test(part))throw Error('Unsafe or overlong thread part');
  return {thread,googleTrend:match};
@@ -95,7 +95,7 @@ export async function prepareStockAnalysis(plan,history,now=new Date()){
  const day=Math.floor(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)/86400000);
  for(let i=0;i<Math.min(STOCKS.length,2);i++){
   const stock=STOCKS[(day+i)%STOCKS.length];
-  if(history.some(p=>p.text?.includes('تحليل سهم '+stock.name+' ('+stock.symbol+')')))continue;
+  if(history.some(p=>p.text?.includes('خلنا نفكك سهم '+stock.name+' ('+stock.symbol+')')))continue;
   try{
    const ua='X-Auto-Publisher/1.0 ('+(process.env.SEC_CONTACT_EMAIL||'contact via GitHub TalalAlrajeh/X-Auto-Publisher issues')+')';
    const data=await (await get('https://data.sec.gov/api/xbrl/companyfacts/CIK'+stock.cik+'.json',13000,{'User-Agent':ua,'Accept':'application/json'})).json();
@@ -144,11 +144,11 @@ export function qualitativeThread(plan,history){
   const snapshot=company.snapshot,age=snapshot?(Date.UTC(plan.day.year,plan.day.month-1,plan.day.day)-Date.parse(snapshot.published+'T00:00:00Z'))/86400000:9999;
   const verified=Boolean(snapshot&&age>=0&&age<=120);
   const thread=[
-   '📊 خلنا نفكك سهم '+company.name+' ('+company.symbol+'): تعمل الشركة في '+company.activity+'. القراءة التالية تميّز بين الأرقام المعلنة وعوامل الأداء، ولا تدّعي سعرًا لحظيًا. '+company.tag+' #الأسهم_السعودية',
-   verified?'النتائج المعلنة عن '+snapshot.period+': '+snapshot.text+' '+company.tag:
-    'قراءة النشاط: تتأثر '+company.name+' بعوامل تشغيلية وتمويلية مختلفة؛ البيانات المالية الحديثة غير متاحة للتحقق هنا، لذلك لا نعرض أرقامًا أو حكمًا قاطعًا عن مركزها المالي. '+company.tag,
-   'ماليًا: أبرز ما يُراجع عند تقييم '+company.name+' هو '+company.finances+'. لا يكفي رقم الربح منفردًا؛ الأهم مقارنته بالفترة المماثلة والتدفقات والمركز المالي. #تحليل_مالي',
-   'المسار المحتمل: تحسّن الصورة إذا تحقق '+company.strong+'؛ أما '+company.weak+' فيمثّل ضغطًا محتملًا. فنيًا لا نضع دعمًا أو مقاومة رقمية من دون أسعار إغلاق حديثة موثوقة. '+company.tag
+   '📊 خلنا نفكك سهم '+company.name+' ('+company.symbol+'): شغل الشركة في '+company.activity+'. بنفصل بين الأرقام المعلنة وعوامل الأداء، بدون ما ندّعي سعر لحظي. '+company.tag+' #الأسهم_السعودية',
+   verified?'آخر أرقام معلنة عن '+snapshot.period+': '+snapshot.text+' '+company.tag:
+    'وش نعرف عن النشاط؟ '+company.name+' يتأثر بعوامل تشغيلية وتمويلية مختلفة. ما عندنا بيانات مالية حديثة متحقق منها هنا، لذلك ما بنحط أرقام من عندنا. '+company.tag,
+   'وش أراقب ماليًا؟ '+company.finances+'. رقم الربح لحاله ما يكفي؛ قارنه بالفترة المماثلة والتدفقات والمركز المالي. #تحليل_مالي',
+   'وش ممكن يدعم السهم؟ '+company.strong+'. والضغط المحتمل: '+company.weak+'. فنيًا ما نحط دعم ومقاومة بأرقام إلا ببيانات إغلاق حديثة وموثوقة. '+company.tag
   ];
   const dated=thread.map(t=>t+' | '+plan.day.day+'/'+plan.day.month+'/'+plan.day.year);
   if(dated.some(t=>t.length>280||CENSORED.test(t)))continue;
