@@ -35,3 +35,11 @@ test('Treasury XML extracts the latest yield curve points',()=>{
  const xml='<feed><entry><content><m:properties><d:NEW_DATE>2026-10-02T00:00:00</d:NEW_DATE><d:BC_3MONTH>3.50</d:BC_3MONTH><d:BC_2YEAR>3.60</d:BC_2YEAR><d:BC_10YEAR>4.20</d:BC_10YEAR><d:BC_30YEAR>4.80</d:BC_30YEAR></m:properties></content></entry></feed>';
  assert.deepEqual(parseTreasury(xml),{date:'2026-10-02T00:00:00',mo3:3.5,yr2:3.6,yr10:4.2,yr30:4.8});
 });
+
+test('material contract headlines are treated as growth stories',()=>{
+ const item={title:'إم آي إس تستلم أمر العمل رقم 2 من هيوماين بقيمة تتجاوز 135% من إيرادات 2025',description:'',pubDate:'Mon, 05 Oct 2026 14:00:00 GMT',feed:'أرقام - الشركات'};
+ assert.equal(category(item),'growth');
+ const text=buildInsight(item);
+ assert.match(text,/أسهم_النمو/);
+ assert.match(text,/135%/);
+});
