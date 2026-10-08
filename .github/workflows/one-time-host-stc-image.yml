@@ -1,0 +1,21 @@
+name: One-time STC image host
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-host-stc-image.yml'
+
+jobs:
+  host:
+    if: contains(github.event.head_commit.message, 'host-stc-image-once')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload STC analysis image to Catbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s assets/stc-analysis-h1-2026.jpg
+          URL="$(curl --fail --silent --show-error --retry 2             -F 'reqtype=fileupload'             -F 'fileToUpload=@assets/stc-analysis-h1-2026.jpg'             https://catbox.moe/user/api.php)"
+          echo "CATBOX_URL=$URL"
+          [[ "$URL" =~ ^https://files\.catbox\.moe/[A-Za-z0-9._-]+\.jpg$ ]]
